@@ -72,52 +72,64 @@ function renderizar(at, max, gold, tipo) {
     document.getElementById('welcome_view').classList.add('hidden');
     document.getElementById('result_view').classList.remove('hidden');
 
-    const melhor = (max.total <= gold.total) ? 
-        { nome: "Desconto Máximo", total: max.total, cor: "bg-orange-600" } : 
-        { nome: "Plano Gold", total: gold.total, cor: "bg-blue-600" };
+    // 1. Lógica de Recomendação
+    const melhorObj = (max.total <= gold.total) ? 
+        { nome: "Desconto Máximo", total: max.total, cor: "bg-orange-600", dados: max } : 
+        { nome: "Plano Gold", total: gold.total, cor: "bg-blue-600", dados: gold };
 
+    // Update Cards
     document.getElementById('res_tot_atual').innerText = at.total.toFixed(2) + "€";
-    document.getElementById('val_recomendado').innerText = melhor.total.toFixed(2) + "€";
-    document.getElementById('nome_recomendado').innerText = `Melhor Opção: ${melhor.nome}`;
-    document.getElementById('card_recomendado').className = `p-6 rounded-3xl shadow-xl card-highlight text-white ${melhor.cor}`;
+    document.getElementById('val_recomendado').innerText = melhorObj.total.toFixed(2) + "€";
+    document.getElementById('nome_recomendado').innerText = `Melhor Opção: ${melhorObj.nome}`;
+    document.getElementById('card_recomendado').className = `p-6 rounded-3xl shadow-xl card-highlight text-white ${melhorObj.cor}`;
 
-    const poupancaMensal = at.total - melhor.total;
+    const poupancaMensal = at.total - melhorObj.total;
     document.getElementById('res_poup_anual').innerText = (poupancaMensal * 12).toFixed(2) + "€";
     document.getElementById('res_poup_mensal').innerText = `Poupança de ${poupancaMensal.toFixed(2)}€ / mês`;
 
-    const badge = document.getElementById('badge_isencao');
-    if (tipo === 'dual') { badge.classList.remove('hidden'); } else { badge.classList.add('hidden'); }
-
+    // 2. Tabela com Coluna de Diferença
     document.getElementById('header_row').innerHTML = `
         <th class="p-5">Componente</th>
         <th class="p-5">O Seu Atual</th>
-        <th class="p-5 text-orange-600 ${melhor.nome === "Desconto Máximo" ? 'ring-2 ring-orange-500 bg-orange-50' : ''}">Desconto Máximo</th>
-        <th class="p-5 text-blue-600 ${melhor.nome === "Plano Gold" ? 'ring-2 ring-blue-500 bg-blue-50' : ''}">Plano Gold</th>
+        <th class="p-5 text-orange-600">Desconto Máximo</th>
+        <th class="p-5 text-blue-600">Plano Gold</th>
+        <th class="p-5 text-gray-500">Diferença (Ideal)</th>
     `;
 
-    // Filtro de linhas dinâmico para a tabela
+    // Mapeamento das linhas comparando sempre com o "melhorObj.dados"
     let rows = [
-        { label: "Luz: Termo Fixo", values: [at.l_f, max.l_f, gold.l_f], categoria: 'luz' },
-        { label: "Luz: Energia", values: [at.l_e, max.l_e, gold.l_e], categoria: 'luz' },
-        { label: "Gás: Termo Fixo", values: [at.g_f, max.g_f, gold.g_f], categoria: 'gas' },
-        { label: "Gás: Energia", values: [at.g_e, max.g_e, gold.g_e], categoria: 'gas' }
-    ].filter(row => tipo === 'dual' || row.categoria === tipo);
+        { label: "Luz: Termo Fixo", vals: [at.l_f, max.l_f, gold.l_f], ideal: melhorObj.dados.l_f, atual: at.l_f, cat: 'luz' },
+        { label: "Luz: Consumo", vals: [at.l_e, max.l_e, gold.l_e], ideal: melhorObj.dados.l_e, atual: at.l_e, cat: 'luz' },
+        { label: "Gás: Termo Fixo", vals: [at.g_f, max.g_f, gold.g_f], ideal: melhorObj.dados.g_f, atual: at.g_f, cat: 'gas' },
+        { label: "Gás: Consumo", vals: [at.g_e, max.g_e, gold.g_e], ideal: melhorObj.dados.g_e, atual: at.g_e, cat: 'gas' }
+    ].filter(row => tipo === 'dual' || row.cat === tipo);
 
-    document.getElementById('table_body').innerHTML = rows.map(r => `
+    document.getElementById('table_body').innerHTML = rows.map(r => {
+        const diff = r.ideal - r.atual;
+        const diffClass = diff <= 0 ? "text-green-600" : "text-red-600";
+        const diffIcon = diff <= 0 ? "↓" : "↑";
+
+        return `
         <tr class="hover:bg-gray-50 transition-colors">
             <td class="p-5 font-bold text-gray-400 text-[10px] uppercase tracking-wider">${r.label}</td>
-            <td class="p-5 font-bold text-gray-700">${r.values[0].toFixed(2)}€</td>
-            <td class="p-5 font-bold text-orange-600">${r.values[1].toFixed(2)}€</td>
-            <td class="p-5 font-bold ${r.values[2] === 0 && r.categoria === 'gas' && tipo === 'dual' ? 'text-green-600 animate-pulse' : 'text-blue-600'}">
-                ${(r.values[2] === 0 && r.categoria === 'gas' && tipo === 'dual') ? 'GRÁTIS' : r.values[2].toFixed(2) + '€'}
+            <td class="p-5 font-bold text-gray-700">${r.vals[0].toFixed(2)}€</td>
+            <td class="p-5 font-bold text-orange-600">${r.vals[1].toFixed(2)}€</td>
+            <td class="p-5 font-bold ${r.vals[2] === 0 && r.cat === 'gas' ? 'text-green-600 animate-pulse' : 'text-blue-600'}">
+                ${(r.vals[2] === 0 && r.cat === 'gas' && tipo === 'dual') ? 'GRÁTIS' : r.vals[2].toFixed(2) + '€'}
             </td>
-        </tr>
-    `).join('') + `
+            <td class="p-5 font-black ${diffClass} bg-gray-50/50">
+                ${diffIcon} ${Math.abs(diff).toFixed(2)}€
+            </td>
+        </tr>`;
+    }).join('') + `
         <tr class="bg-gray-100 font-black text-lg">
             <td class="p-5 text-gray-600">TOTAL MENSAL</td>
-            <td class="p-5 text-gray-700 border-t-2 border-gray-300">${at.total.toFixed(2)}€</td>
-            <td class="p-5 text-orange-600 border-t-2 border-orange-300">${max.total.toFixed(2)}€</td>
-            <td class="p-5 text-blue-600 border-t-2 border-blue-300">${gold.total.toFixed(2)}€</td>
+            <td class="p-5 text-gray-700">${at.total.toFixed(2)}€</td>
+            <td class="p-5 text-orange-600">${max.total.toFixed(2)}€</td>
+            <td class="p-5 text-blue-600">${gold.total.toFixed(2)}€</td>
+            <td class="p-5 ${poupancaMensal >= 0 ? 'text-green-600' : 'text-red-600'} bg-gray-200/50">
+                ${poupancaMensal >= 0 ? '↓' : '↑'} ${Math.abs(poupancaMensal).toFixed(2)}€
+            </td>
         </tr>
     `;
 }
