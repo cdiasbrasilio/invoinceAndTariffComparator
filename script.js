@@ -3,32 +3,25 @@
  */
 const DATA = {
     desconto_maximo: {
-        luz: { "1.15": 0.1825, "2.30": 0.2054, "3.45": 0.2140, "4.6": 0.3148, "5.75": 0.4125, "6.90": 0.4119, "10.35": 0.5645, "13.8": 0.7083, "17.25": 0.9808, "20.7": 1.2680, energia: 0.1397 },
+        luz: { "1.15": 0.1825, "2.30": 0.2054, "3.45": 0.2140, "4.60": 0.3148, "5.75": 0.4125, "6.90": 0.4119, "10.35": 0.5645, "13.80": 0.7083, "17.25": 0.9808, "20.70": 1.2680, energia: 0.1397 },
         gas: { "1": 0.1237, "2": 0.1628, "3": 0.3146, "4": 0.6819, energia: [0, 0.0973, 0.0956, 0.0947, 0.0930] }
     },
     gold: {
-        luz: { "1.15": 0.2238, "2.30": 0.2394, "3.45": 0.2605, "4.6": 0.3828, "5.75": 0.4442, "6.90": 0.4949, "10.35": 0.6714, "13.8": 0.9078, "17.25": 1.2044, "20.7": 1.5536, energia: 0.1599 },
+        luz: { "1.15": 0.2238, "2.30": 0.2394, "3.45": 0.2605, "4.60": 0.3828, "5.75": 0.4442, "6.90": 0.4949, "10.35": 0.6714, "13.80": 0.9078, "17.25": 1.2044, "20.70": 1.5536, energia: 0.1599 },
         gas: { "1": 0.0262, "2": 0.0573, "3": 0.0536, "4": 0.0454, energia: [0, 0.1270, 0.1146, 0.1116, 0.1054] }
     }
 };
 
 window.calcularSimulacao = function() {
-    console.log("Botão clicado, a calcular...");
+    const tipo = document.getElementById('tipo_contrato').value;
+    const pot = document.getElementById('potencia_luz').value;
+    const esc = parseInt(document.getElementById('escalao_gas').value);
     
-    // Pequeno check de segurança para garantir que os elementos existem antes de ler
-    const elTipo = document.getElementById('tipo_contrato');
-    const elPot = document.getElementById('potencia_luz');
-    const elEsc = document.getElementById('escalao_gas');
-    
-    if (!elTipo || !elPot || !elEsc) {
-        console.error("Erro: Elementos do formulário não encontrados!");
-        return;
-    }
-
-    const tipo = elTipo.value;
-    const pot = elPot.value;
-    const esc = parseInt(elEsc.value);
-    const raw = (id) => parseFloat(document.getElementById(id).value) || 0;
+    // Função raw garante que se o campo estiver vazio, retorna 0 em vez de NaN
+    const raw = (id) => {
+        const val = parseFloat(document.getElementById(id).value);
+        return isNaN(val) ? 0 : val;
+    };
     
     const inputs = {
         l_c: (tipo !== 'gas') ? raw('in_luz_c') : 0,
@@ -41,11 +34,11 @@ window.calcularSimulacao = function() {
 
     const calcBase = (key) => {
         const p = DATA[key];
-        // Adicionada verificação para evitar erro se a potência não for encontrada
-        const valorPot = p.luz[pot] || 0; 
+        // Proteção: se não encontrar a potência, assume 0 em vez de quebrar
+        const precoPotencia = p.luz[pot] || 0;
         
         const res = {
-            l_f: (tipo !== 'gas') ? valorPot * 30 : 0,
+            l_f: (tipo !== 'gas') ? precoPotencia * 30 : 0,
             l_e: (tipo !== 'gas') ? inputs.l_c * p.luz.energia : 0,
             g_f: (tipo !== 'luz') ? p.gas[esc] * 30 : 0,
             g_e: (tipo !== 'luz') ? inputs.g_c * p.gas.energia[esc] : 0
@@ -78,7 +71,7 @@ function calcularDetalhamentoIVA(comp, consLuz, consGas) {
 
 function renderizar(at, max, gold, tipo, inputs) {
     document.getElementById('welcome_view').classList.add('hidden');
-    document.getElementById('result_view').classList.remove('hidden');
+    document.getElementById('result_view').classList.remove('hidden');Float32Array
 
     const f_at = calcularDetalhamentoIVA(at, inputs.l_c, inputs.g_c);
     const f_max = calcularDetalhamentoIVA(max, inputs.l_c, inputs.g_c);
