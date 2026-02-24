@@ -17,27 +17,35 @@ function calcularSimulacao() {
     const pot = document.getElementById('potencia_luz').value;
     const esc = parseInt(document.getElementById('escalao_gas').value);
 
-    // Inputs Cliente
+    // Inputs Cliente - Captura bruta
+    const raw_l_c = parseFloat(document.getElementById('in_luz_c').value) || 0;
+    const raw_l_e = parseFloat(document.getElementById('in_luz_e').value) || 0;
+    const raw_l_f = parseFloat(document.getElementById('in_luz_f').value) || 0;
+    const raw_g_c = parseFloat(document.getElementById('in_gas_c').value) || 0;
+    const raw_g_e = parseFloat(document.getElementById('in_gas_e').value) || 0;
+    const raw_g_f = parseFloat(document.getElementById('in_gas_f').value) || 0;
+
+    // LÓGICA DE FILTRAGEM: Zerar os valores que não pertencem ao contrato selecionado
     const inputs = {
-        l_c: parseFloat(document.getElementById('in_luz_c').value) || 0,
-        l_e: parseFloat(document.getElementById('in_luz_e').value) || 0,
-        l_f: parseFloat(document.getElementById('in_luz_f').value) || 0,
-        g_c: parseFloat(document.getElementById('in_gas_c').value) || 0,
-        g_e: parseFloat(document.getElementById('in_gas_e').value) || 0,
-        g_f: parseFloat(document.getElementById('in_gas_f').value) || 0
+        l_c: (tipo === 'dual' || tipo === 'luz') ? raw_l_c : 0,
+        l_e: (tipo === 'dual' || tipo === 'luz') ? raw_l_e : 0,
+        l_f: (tipo === 'dual' || tipo === 'luz') ? raw_l_f : 0,
+        g_c: (tipo === 'dual' || tipo === 'gas') ? raw_g_c : 0,
+        g_e: (tipo === 'dual' || tipo === 'gas') ? raw_g_e : 0,
+        g_f: (tipo === 'dual' || tipo === 'gas') ? raw_g_f : 0
     };
 
-    // Cálculos Internos
+    // Cálculos Planos Gold Energy
     const calcPlano = (tarifarioKey) => {
         const p = DATA[tarifarioKey];
         const res = {
-            l_f: (tipo !== 'gas') ? p.luz[pot] * 30 : 0,
-            l_e: (tipo !== 'gas') ? inputs.l_c * p.luz.energia : 0,
-            g_f: (tipo !== 'luz') ? p.gas[esc] * 30 : 0,
-            g_e: (tipo !== 'luz') ? inputs.g_c * p.gas.energia[esc] : 0
+            l_f: (tipo === 'dual' || tipo === 'luz') ? p.luz[pot] * 30 : 0,
+            l_e: (tipo === 'dual' || tipo === 'luz') ? inputs.l_c * p.luz.energia : 0,
+            g_f: (tipo === 'dual' || tipo === 'gas') ? p.gas[esc] * 30 : 0,
+            g_e: (tipo === 'dual' || tipo === 'gas') ? inputs.g_c * p.gas.energia[esc] : 0
         };
 
-        // REGRA DE ISENÇÃO: Se for DUAL e plano GOLD, o fixo do GÁS é 0
+        // Regra de Isenção Gold Dual
         if (tarifarioKey === 'gold' && tipo === 'dual') {
             res.g_f = 0;
         }
@@ -47,8 +55,10 @@ function calcularSimulacao() {
     };
 
     const atual = {
-        l_f: inputs.l_f * 30, l_e: inputs.l_c * inputs.l_e,
-        g_f: inputs.g_f * 30, g_e: inputs.g_c * inputs.g_e,
+        l_f: inputs.l_f * 30, 
+        l_e: inputs.l_c * inputs.l_e,
+        g_f: inputs.g_f * 30, 
+        g_e: inputs.g_c * inputs.g_e,
         total: (inputs.l_f * 30) + (inputs.l_c * inputs.l_e) + (inputs.g_f * 30) + (inputs.g_c * inputs.g_e)
     };
 
@@ -62,12 +72,10 @@ function renderizar(at, max, gold, tipo) {
     document.getElementById('welcome_view').classList.add('hidden');
     document.getElementById('result_view').classList.remove('hidden');
 
-    // LÓGICA DE RECOMENDAÇÃO (O menor valor real ganha o destaque)
     const melhor = (max.total <= gold.total) ? 
         { nome: "Desconto Máximo", total: max.total, cor: "bg-orange-600" } : 
         { nome: "Plano Gold", total: gold.total, cor: "bg-blue-600" };
 
-    // Update Cards
     document.getElementById('res_tot_atual').innerText = at.total.toFixed(2) + "€";
     document.getElementById('val_recomendado').innerText = melhor.total.toFixed(2) + "€";
     document.getElementById('nome_recomendado').innerText = `Melhor Opção: ${melhor.nome}`;
@@ -77,33 +85,31 @@ function renderizar(at, max, gold, tipo) {
     document.getElementById('res_poup_anual').innerText = (poupancaMensal * 12).toFixed(2) + "€";
     document.getElementById('res_poup_mensal').innerText = `Poupança de ${poupancaMensal.toFixed(2)}€ / mês`;
 
-    // Isenção Badge
     const badge = document.getElementById('badge_isencao');
     if (tipo === 'dual') { badge.classList.remove('hidden'); } else { badge.classList.add('hidden'); }
 
-    // Header da Tabela com Destaque
     document.getElementById('header_row').innerHTML = `
         <th class="p-5">Componente</th>
         <th class="p-5">O Seu Atual</th>
-        <th class="p-5 text-orange-600 ${melhor.nome === "Desconto Máximo" ? 'ring-2 ring-orange-500 bg-orange-50' : ''}">Desconto Máximo ${melhor.nome === "Desconto Máximo" ? '⭐' : ''}</th>
-        <th class="p-5 text-blue-600 ${melhor.nome === "Plano Gold" ? 'ring-2 ring-blue-500 bg-blue-50' : ''}">Plano Gold ${melhor.nome === "Plano Gold" ? '⭐' : ''}</th>
+        <th class="p-5 text-orange-600 ${melhor.nome === "Desconto Máximo" ? 'ring-2 ring-orange-500 bg-orange-50' : ''}">Desconto Máximo</th>
+        <th class="p-5 text-blue-600 ${melhor.nome === "Plano Gold" ? 'ring-2 ring-blue-500 bg-blue-50' : ''}">Plano Gold</th>
     `;
 
-    // Linhas da Tabela
-    const rows = [
-        ["Luz: Termo Fixo", at.l_f, max.l_f, gold.l_f],
-        ["Luz: Energia", at.l_e, max.l_e, gold.l_e],
-        ["Gás: Termo Fixo", at.g_f, max.g_f, gold.g_f],
-        ["Gás: Energia", at.g_e, max.g_e, gold.g_e]
-    ];
+    // Filtro de linhas dinâmico para a tabela
+    let rows = [
+        { label: "Luz: Termo Fixo", values: [at.l_f, max.l_f, gold.l_f], categoria: 'luz' },
+        { label: "Luz: Energia", values: [at.l_e, max.l_e, gold.l_e], categoria: 'luz' },
+        { label: "Gás: Termo Fixo", values: [at.g_f, max.g_f, gold.g_f], categoria: 'gas' },
+        { label: "Gás: Energia", values: [at.g_e, max.g_e, gold.g_e], categoria: 'gas' }
+    ].filter(row => tipo === 'dual' || row.categoria === tipo);
 
     document.getElementById('table_body').innerHTML = rows.map(r => `
         <tr class="hover:bg-gray-50 transition-colors">
-            <td class="p-5 font-bold text-gray-400 text-[10px] uppercase tracking-wider">${r[0]}</td>
-            <td class="p-5 font-bold text-gray-700">${r[1].toFixed(2)}€</td>
-            <td class="p-5 font-bold text-orange-600">${r[2].toFixed(2)}€</td>
-            <td class="p-5 font-bold ${r[3] === 0 ? 'text-green-600 animate-pulse' : 'text-blue-600'}">
-                ${r[3] === 0 ? 'GRÁTIS' : r[3].toFixed(2) + '€'}
+            <td class="p-5 font-bold text-gray-400 text-[10px] uppercase tracking-wider">${r.label}</td>
+            <td class="p-5 font-bold text-gray-700">${r.values[0].toFixed(2)}€</td>
+            <td class="p-5 font-bold text-orange-600">${r.values[1].toFixed(2)}€</td>
+            <td class="p-5 font-bold ${r.values[2] === 0 && r.categoria === 'gas' && tipo === 'dual' ? 'text-green-600 animate-pulse' : 'text-blue-600'}">
+                ${(r.values[2] === 0 && r.categoria === 'gas' && tipo === 'dual') ? 'GRÁTIS' : r.values[2].toFixed(2) + '€'}
             </td>
         </tr>
     `).join('') + `
