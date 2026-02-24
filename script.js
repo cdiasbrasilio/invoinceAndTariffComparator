@@ -12,7 +12,8 @@ const DATA = {
     }
 };
 
-function calcularSimulacao() {
+window.calcularSimulacao = function() {
+    console.log("Botão clicado, a calcular...");
     const tipo = document.getElementById('tipo_contrato').value;
     const pot = document.getElementById('potencia_luz').value;
     const esc = parseInt(document.getElementById('escalao_gas').value);
@@ -46,30 +47,19 @@ function calcularSimulacao() {
         tipo,
         inputs
     );
-}
+};
 
 function calcularDetalhamentoIVA(comp, consLuz, consGas) {
     const TAXAS_FIXAS = 2.85 + 0.07; 
     const IEC = (consLuz + consGas) * 0.001;
-    
     const pLuz = comp.l_e / (consLuz || 1);
     const pGas = comp.g_e / (consGas || 1);
     
-    // IVA 6%: 100kWh luz + 40kWh gás
     const iva6 = ((Math.min(consLuz, 100) * pLuz) + (Math.min(consGas, 40) * pGas)) * 0.06;
-
-    // IVA 23%: Restante + Termos Fixos + Taxas
-    const base23 = (Math.max(0, consLuz - 100) * pLuz) + 
-                   (Math.max(0, consGas - 40) * pGas) + 
-                   comp.l_f + comp.g_f + TAXAS_FIXAS + IEC;
+    const base23 = (Math.max(0, consLuz - 100) * pLuz) + (Math.max(0, consGas - 40) * pGas) + comp.l_f + comp.g_f + TAXAS_FIXAS + IEC;
     const iva23 = base23 * 0.23;
 
-    return {
-        iva6,
-        iva23,
-        taxas: TAXAS_FIXAS + IEC,
-        total: comp.l_f + comp.l_e + comp.g_f + comp.g_e + TAXAS_FIXAS + IEC + iva6 + iva23
-    };
+    return { iva6, iva23, taxas: TAXAS_FIXAS + IEC, total: comp.l_f + comp.l_e + comp.g_f + comp.g_e + TAXAS_FIXAS + IEC + iva6 + iva23 };
 }
 
 function renderizar(at, max, gold, tipo, inputs) {
@@ -86,80 +76,37 @@ function renderizar(at, max, gold, tipo, inputs) {
 
     const poupancaMensal = f_at.total - melhor.res.total;
     
-    // --- ATUALIZAÇÃO DOS CARDS ---
     document.getElementById('res_tot_atual').innerText = f_at.total.toFixed(2) + "€";
     document.getElementById('val_recomendado').innerText = melhor.res.total.toFixed(2) + "€";
     document.getElementById('nome_recomendado').innerText = "OPÇÃO IDEAL: " + melhor.nome;
     document.getElementById('card_recomendado').className = `p-6 rounded-3xl shadow-xl text-white ${melhor.cor}`;
     document.getElementById('res_poup_anual').innerText = (poupancaMensal * 12).toFixed(2) + "€";
 
-    // Re-inserindo a Poupança Mensal no card verde
     const cardVerde = document.querySelector('.bg-green-600');
-    let pMensal = document.getElementById('res_poup_mensal_label');
-    if(!pMensal) {
-        pMensal = document.createElement('p');
-        pMensal.id = 'res_poup_mensal_label';
-        pMensal.className = 'text-xs font-medium opacity-90 mt-2 italic border-t border-green-500 pt-2 text-white';
-        cardVerde.appendChild(pMensal);
-    }
+    let pMensal = document.getElementById('res_poup_mensal_label') || document.createElement('p');
+    pMensal.id = 'res_poup_mensal_label';
+    pMensal.className = 'text-xs font-medium opacity-90 mt-2 italic border-t border-green-500 pt-2 text-white';
     pMensal.innerText = `Poupança de ${poupancaMensal.toFixed(2)}€ / mês (c/ IVA)`;
+    if (!document.getElementById('res_poup_mensal_label')) cardVerde.appendChild(pMensal);
 
-    // --- CONSTRUÇÃO DA TABELA ---
     let html = "";
     const row = (label, vAt, vMax, vGold, cat) => {
         const vIdl = melhor.nome === "Desconto Máximo" ? vMax : vGold;
         const d = vIdl - vAt;
-        return `<tr class="border-b text-sm">
-            <td class="p-4 font-bold text-gray-400 text-[10px] uppercase">${label}</td>
-            <td class="p-4">${vAt.toFixed(2)}€</td>
-            <td class="p-4 text-orange-600">${vMax.toFixed(2)}€</td>
-            <td class="p-4 text-blue-600">${(vGold === 0 && cat === 'gas' && tipo === 'dual') ? 'GRÁTIS' : vGold.toFixed(2) + '€'}</td>
-            <td class="p-4 text-center font-black ${d <= 0 ? 'text-green-600' : 'text-red-500'}">
-                ${d <= 0 ? '↓' : '↑'} ${Math.abs(d).toFixed(2)}€
-            </td>
-        </tr>`;
+        return `<tr class="border-b text-sm"><td class="p-4 font-bold text-gray-400 text-[10px] uppercase">${label}</td><td class="p-4">${vAt.toFixed(2)}€</td><td class="p-4 text-orange-600">${vMax.toFixed(2)}€</td><td class="p-4 text-blue-600">${(vGold === 0 && cat === 'gas' && tipo === 'dual') ? 'GRÁTIS' : vGold.toFixed(2) + '€'}</td><td class="p-4 text-center font-black ${d <= 0 ? 'text-green-600' : 'text-red-500'}">${d <= 0 ? '↓' : '↑'} ${Math.abs(d).toFixed(2)}€</td></tr>`;
     };
 
-    if(tipo !== 'gas') { 
-        html += row("Luz: Fixo", at.l_f, max.l_f, gold.l_f, 'luz');
-        html += row("Luz: Consumo", at.l_e, max.l_e, gold.l_e, 'luz');
-    }
-    if(tipo !== 'luz') { 
-        html += row("Gás: Fixo", at.g_f, max.g_f, gold.g_f, 'gas');
-        html += row("Gás: Consumo", at.g_e, max.g_e, gold.g_e, 'gas');
-    }
+    if(tipo !== 'gas') { html += row("Luz: Fixo", at.l_f, max.l_f, gold.l_f, 'luz') + row("Luz: Consumo", at.l_e, max.l_e, gold.l_e, 'luz'); }
+    if(tipo !== 'luz') { html += row("Gás: Fixo", at.g_f, max.g_f, gold.g_f, 'gas') + row("Gás: Consumo", at.g_e, max.g_e, gold.g_e, 'gas'); }
 
-    // Linhas de IVA Detalhado no Quadro
     html += `
-        <tr class="bg-slate-50 text-[10px] italic text-gray-400">
-            <td class="p-3 font-bold uppercase">Taxas (IEC/CAV/TRFE)</td>
-            <td class="p-3">${f_at.taxas.toFixed(2)}€</td>
-            <td class="p-3">${f_max.taxas.toFixed(2)}€</td>
-            <td class="p-3">${f_gold.taxas.toFixed(2)}€</td>
-            <td class="p-3 text-center">-</td>
-        </tr>
-        <tr class="bg-slate-50 text-[10px] italic text-gray-600">
-            <td class="p-3 font-bold uppercase italic">IVA Taxa Reduzida (6%)</td>
-            <td class="p-3">${f_at.iva6.toFixed(2)}€</td>
-            <td class="p-3">${f_max.iva6.toFixed(2)}€</td>
-            <td class="p-3">${f_gold.iva6.toFixed(2)}€</td>
-            <td class="p-3 text-center">-</td>
-        </tr>
-        <tr class="bg-slate-50 text-[10px] italic text-gray-400 border-b">
-            <td class="p-3 font-bold uppercase italic">IVA Taxa Normal (23%)</td>
-            <td class="p-3">${f_at.iva23.toFixed(2)}€</td>
-            <td class="p-3">${f_max.iva23.toFixed(2)}€</td>
-            <td class="p-3">${f_gold.iva23.toFixed(2)}€</td>
-            <td class="p-3 text-center">-</td>
-        </tr>
+        <tr class="bg-slate-50 text-[10px] italic text-gray-400"><td>Taxas (IEC/CAV/TRFE)</td><td>${f_at.taxas.toFixed(2)}€</td><td>${f_max.taxas.toFixed(2)}€</td><td>${f_gold.taxas.toFixed(2)}€</td><td class="text-center">-</td></tr>
+        <tr class="bg-blue-50/50 text-[10px] italic text-blue-600"><td>IVA 6%</td><td>${f_at.iva6.toFixed(2)}€</td><td>${f_max.iva6.toFixed(2)}€</td><td>${f_gold.iva6.toFixed(2)}€</td><td class="text-center">-</td></tr>
+        <tr class="bg-slate-50 text-[10px] italic text-gray-400"><td>IVA 23%</td><td>${f_at.iva23.toFixed(2)}€</td><td>${f_max.iva23.toFixed(2)}€</td><td>${f_gold.iva23.toFixed(2)}€</td><td class="text-center">-</td></tr>
         <tr class="bg-slate-900 text-white font-black text-lg">
-            <td class="p-5 rounded-bl-3xl italic">TOTAL FATURA</td>
-            <td class="p-5">${f_at.total.toFixed(2)}€</td>
-            <td class="p-5 text-orange-400 font-bold">${f_max.total.toFixed(2)}€</td>
-            <td class="p-5 text-blue-400 font-bold">${f_gold.total.toFixed(2)}€</td>
-            <td class="p-5 text-center text-yellow-400 rounded-br-3xl italic">↓ ${poupancaMensal.toFixed(2)}€</td>
+            <td class="p-5">TOTAL FATURA</td><td>${f_at.total.toFixed(2)}€</td><td class="text-orange-400">${f_max.total.toFixed(2)}€</td><td class="text-blue-400">${f_gold.total.toFixed(2)}€</td><td class="text-center text-yellow-400 font-black">↓ ${poupancaMensal.toFixed(2)}€</td>
         </tr>`;
     
-    document.getElementById('header_row').innerHTML = `<th class="p-4">Componente</th><th class="p-4">Atual</th><th class="p-4 text-orange-600">Max</th><th class="p-4 text-blue-600">Gold</th><th class="p-4 text-center">Poupança</th>`;
+    document.getElementById('header_row').innerHTML = `<th class="p-4">Componente</th><th class="p-4">Atual</th><th class="p-4">Max</th><th class="p-4">Gold</th><th class="p-4 text-center">Poupança</th>`;
     document.getElementById('table_body').innerHTML = html;
 }
