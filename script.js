@@ -12,6 +12,34 @@ const DATA = {
     }
 };
 
+/**
+ * Função Utilitária para animação de subida de valores (Efeito CountUp)
+ * Transmite uma percepção de polimento de interface de alto nível técnico.
+ */
+function animarValor(id, valorFinal) {
+    const elemento = document.getElementById(id);
+    if (!elemento) return;
+
+    let valorAtual = 0;
+    const duracao = 500; // Milissegundos totais da animação
+    const fps = 60;
+    const totalFrames = (duracao / 1000) * fps;
+    const incremento = valorFinal / totalFrames;
+    let frame = 0;
+
+    const timer = setInterval(() => {
+        frame++;
+        valorAtual += incremento;
+
+        if (frame >= totalFrames || valorAtual >= valorFinal) {
+            elemento.innerText = valorFinal.toFixed(2) + "€";
+            clearInterval(timer);
+        } else {
+            elemento.innerText = valorAtual.toFixed(2) + "€";
+        }
+    }, 1000 / fps);
+}
+
 window.calcularSimulacao = function() {
     const tipo = document.getElementById('tipo_contrato').value;
     const pot = document.getElementById('potencia_luz').value;
@@ -19,7 +47,9 @@ window.calcularSimulacao = function() {
     
     // Função raw garante que se o campo estiver vazio, retorna 0 em vez de NaN
     const raw = (id) => {
-        const val = parseFloat(document.getElementById(id).value);
+        const inputElement = document.getElementById(id);
+        if (!inputElement) return 0;
+        const val = parseFloat(inputElement.value);
         return isNaN(val) ? 0 : val;
     };
     
@@ -71,28 +101,30 @@ function calcularDetalhamentoIVA(comp, consLuz, consGas) {
 
 function renderizar(at, max, gold, tipo, inputs) {
     document.getElementById('welcome_view').classList.add('hidden');
-    document.getElementById('result_view').classList.remove('hidden');Float32Array
+    document.getElementById('result_view').classList.remove('hidden');
 
     const f_at = calcularDetalhamentoIVA(at, inputs.l_c, inputs.g_c);
     const f_max = calcularDetalhamentoIVA(max, inputs.l_c, inputs.g_c);
     const f_gold = calcularDetalhamentoIVA(gold, inputs.l_c, inputs.g_c);
 
     const melhor = (f_max.total <= f_gold.total) ? 
-        { nome: "Desconto Máximo", res: f_max, cor: "bg-orange-600" } : 
-        { nome: "Plano Gold", res: f_gold, cor: "bg-blue-600" };
+        { nome: "Desconto Máximo", res: f_max, cor: "bg-orange-600 shadow-orange-600/20" } : 
+        { nome: "Plano Gold", res: f_gold, cor: "bg-blue-600 shadow-blue-600/20" };
 
     const poupancaMensal = f_at.total - melhor.res.total;
     
-    document.getElementById('res_tot_atual').innerText = f_at.total.toFixed(2) + "€";
-    document.getElementById('val_recomendado').innerText = melhor.res.total.toFixed(2) + "€";
+    // Injeção de valores aplicando a animação dinâmica
+    animarValor('res_tot_atual', f_at.total);
+    animarValor('val_recomendado', melhor.res.total);
+    animarValor('res_poup_anual', (poupancaMensal * 12));
+
     document.getElementById('nome_recomendado').innerText = "OPÇÃO IDEAL: " + melhor.nome;
-    document.getElementById('card_recomendado').className = `p-6 rounded-3xl shadow-xl text-white ${melhor.cor}`;
-    document.getElementById('res_poup_anual').innerText = (poupancaMensal * 12).toFixed(2) + "€";
+    document.getElementById('card_recomendado').className = `p-6 rounded-3xl shadow-xl text-white transition-all duration-500 ${melhor.cor}`;
 
     const cardVerde = document.querySelector('.bg-green-600');
     let pMensal = document.getElementById('res_poup_mensal_label') || document.createElement('p');
     pMensal.id = 'res_poup_mensal_label';
-    pMensal.className = 'text-xs font-medium opacity-90 mt-2 italic border-t border-green-500 pt-2 text-white';
+    pMensal.className = 'text-xs font-medium opacity-90 mt-2 italic border-t border-green-500/40 pt-2 text-white';
     pMensal.innerText = `Poupança de ${poupancaMensal.toFixed(2)}€ / mês (c/ IVA)`;
     if (!document.getElementById('res_poup_mensal_label')) cardVerde.appendChild(pMensal);
 
@@ -100,20 +132,36 @@ function renderizar(at, max, gold, tipo, inputs) {
     const row = (label, vAt, vMax, vGold, cat) => {
         const vIdl = melhor.nome === "Desconto Máximo" ? vMax : vGold;
         const d = vIdl - vAt;
-        return `<tr class="border-b text-sm"><td class="p-4 font-bold text-gray-400 text-[10px] uppercase">${label}</td><td class="p-4">${vAt.toFixed(2)}€</td><td class="p-4 text-orange-600">${vMax.toFixed(2)}€</td><td class="p-4 text-blue-600">${(vGold === 0 && cat === 'gas' && tipo === 'dual') ? 'GRÁTIS' : vGold.toFixed(2) + '€'}</td><td class="p-4 text-center font-black ${d <= 0 ? 'text-green-600' : 'text-red-500'}">${d <= 0 ? '↓' : '↑'} ${Math.abs(d).toFixed(2)}€</td></tr>`;
+        return `<tr class="border-b text-sm text-slate-600 hover:bg-slate-50/50 transition-colors">
+            <td class="p-4 font-bold text-gray-400 text-[10px] uppercase tracking-wider">${label}</td>
+            <td class="p-4 font-medium">${vAt.toFixed(2)}€</td>
+            <td class="p-4 text-orange-600 font-medium">${vMax.toFixed(2)}€</td>
+            <td class="p-4 text-blue-600 font-medium">${(vGold === 0 && cat === 'gas' && tipo === 'dual') ? '<span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded">GRÁTIS</span>' : vGold.toFixed(2) + '€'}</td>
+            <td class="p-4 text-center font-black ${d <= 0 ? 'text-green-600' : 'text-red-500'}">${d <= 0 ? '↓' : '↑'} ${Math.abs(d).toFixed(2)}€</td>
+        </tr>`;
     };
 
-    if(tipo !== 'gas') { html += row("Luz: Fixo", at.l_f, max.l_f, gold.l_f, 'luz') + row("Luz: Consumo", at.l_e, max.l_e, gold.l_e, 'luz'); }
-    if(tipo !== 'luz') { html += row("Gás: Fixo", at.g_f, max.g_f, gold.g_f, 'gas') + row("Gás: Consumo", at.g_e, max.g_e, gold.g_e, 'gas'); }
+    if(tipo !== 'gas') { 
+        html += row("Luz: Termo Fixo", at.l_f, max.l_f, gold.l_f, 'luz') + row("Luz: Consumo", at.l_e, max.l_e, gold.l_e, 'luz'); 
+    }
+    if(tipo !== 'luz') { 
+        html += row("Gás: Termo Fixo", at.g_f, max.g_f, gold.g_f, 'gas') + row("Gás: Consumo", at.g_e, max.g_e, gold.g_e, 'gas'); 
+    }
 
     html += `
-        <tr class="bg-slate-50 text-[10px] italic text-gray-400"><td>Taxas (IEC/CAV/TRFE)</td><td>${f_at.taxas.toFixed(2)}€</td><td>${f_max.taxas.toFixed(2)}€</td><td>${f_gold.taxas.toFixed(2)}€</td><td class="text-center">-</td></tr>
-        <tr class="bg-blue-50/50 text-[10px] italic text-blue-600"><td>IVA 6%</td><td>${f_at.iva6.toFixed(2)}€</td><td>${f_max.iva6.toFixed(2)}€</td><td>${f_gold.iva6.toFixed(2)}€</td><td class="text-center">-</td></tr>
-        <tr class="bg-slate-50 text-[10px] italic text-gray-400"><td>IVA 23%</td><td>${f_at.iva23.toFixed(2)}€</td><td>${f_max.iva23.toFixed(2)}€</td><td>${f_gold.iva23.toFixed(2)}€</td><td class="text-center">-</td></tr>
-        <tr class="bg-slate-900 text-white font-black text-lg">
-            <td class="p-5">TOTAL FATURA</td><td>${f_at.total.toFixed(2)}€</td><td class="text-orange-400">${f_max.total.toFixed(2)}€</td><td class="text-blue-400">${f_gold.total.toFixed(2)}€</td><td class="text-center text-yellow-400 font-black">↓ ${poupancaMensal.toFixed(2)}€</td>
+        <tr class="bg-slate-50/60 text-[10px] italic text-gray-400">
+            <td class="p-3 pl-4">Taxas Regulamentares (IEC/CAV/TRFE)</td><td>${f_at.taxas.toFixed(2)}€</td><td>${f_max.taxas.toFixed(2)}€</td><td>${f_gold.taxas.toFixed(2)}€</td><td class="text-center">-</td>
+        </tr>
+        <tr class="bg-blue-50/30 text-[10px] italic text-blue-600 border-y border-blue-50">
+            <td class="p-3 pl-4">Subtotal IVA 6%</td><td>${f_at.iva6.toFixed(2)}€</td><td>${f_max.iva6.toFixed(2)}€</td><td>${f_gold.iva6.toFixed(2)}€</td><td class="text-center">-</td>
+        </tr>
+        <tr class="bg-slate-50/60 text-[10px] italic text-gray-400">
+            <td class="p-3 pl-4">Subtotal IVA 23%</td><td>${f_at.iva23.toFixed(2)}€</td><td>${f_max.iva23.toFixed(2)}€</td><td>${f_gold.iva23.toFixed(2)}€</td><td class="text-center">-</td>
+        </tr>
+        <tr class="bg-slate-900 text-white font-black text-base border-t-2 border-slate-800">
+            <td class="p-4 rounded-bl-2xl">TOTAL FATURA FINAL</td><td class="font-mono">${f_at.total.toFixed(2)}€</td><td class="text-orange-400 font-mono">${f_max.total.toFixed(2)}€</td><td class="text-blue-400 font-mono">${f_gold.total.toFixed(2)}€</td><td class="text-center text-yellow-400 font-black rounded-br-2xl font-mono">↓ ${poupancaMensal.toFixed(2)}€</td>
         </tr>`;
     
-    document.getElementById('header_row').innerHTML = `<th class="p-4">Componente</th><th class="p-4">Atual</th><th class="p-4">Max</th><th class="p-4">Gold</th><th class="p-4 text-center">Poupança</th>`;
+    document.getElementById('header_row').innerHTML = `<th class="p-4">Componente de Custo</th><th class="p-4">O seu Atual</th><th class="p-4">Plano Max</th><th class="p-4">Plano Gold</th><th class="p-4 text-center">Poupança Líquida</th>`;
     document.getElementById('table_body').innerHTML = html;
 }
