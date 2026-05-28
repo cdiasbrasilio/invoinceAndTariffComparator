@@ -1,5 +1,5 @@
 /**
- * TABELA DE PREÇOS OFICIAIS
+ * TABELA DE PREÇOS - BASES
  */
 const DATA = {
     desconto_maximo: {
@@ -14,7 +14,6 @@ const DATA = {
 
 /**
  * Função Utilitária para animação de subida de valores (Efeito CountUp)
- * Transmite uma percepção de polimento de interface de alto nível técnico.
  */
 function animarValor(id, valorFinal) {
     const elemento = document.getElementById(id);
