@@ -2,8 +2,6 @@
 
 An independent, data-driven utility application designed to solve a critical operational bottleneck in the Portuguese energy retail sector. This software automates complex tariff modeling, reducing commercial quotation time by over **93%**.
 
-🚀 **Live Demo:** [Insert your Vercel/GitHub Pages Link here if available, or delete this line]
-
 ---
 
 ## 📈 Business Case & Operational Impact
