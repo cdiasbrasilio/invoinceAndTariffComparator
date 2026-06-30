@@ -42,3 +42,15 @@ Since the project relies natively on Vanilla technologies, it requires no compil
 1. Clone the repository:
    ```bash
    git clone [https://github.com/cdiasbrasilio/invoinceAndTariffComparator.git](https://github.com/cdiasbrasilio/invoinceAndTariffComparator.git)
+
+---
+
+## 🧑‍💻 Developer
+
+1. Cristiano Brasílio
+
+2. Portfolio: cdiasbrasilio.com
+
+3. LinkedIn: /in/cristiano-brasilio
+
+4. GitHub: @cdiasbrasilio
